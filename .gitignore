@@ -1,2 +1,7 @@
 data
 __pycache__/
+*.pkl
+*.ipynb
+.ipynb_checkpoints/
+*.csv
+*.h5

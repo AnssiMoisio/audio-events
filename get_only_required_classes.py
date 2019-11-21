@@ -10,13 +10,13 @@ out_list = []
 for b in in_list:
     for class_label in reqd_classes:
         try:
-            if class_label in b[3] and counts[class_label] <= 200:
+            if class_label in b[3] and counts[class_label] <= 2000:
                 out_list.append(b)
                 counts[class_label]+=1
         except IndexError as ie:
             continue
 print(len(out_list), counts)
-with open("filtered_data.csv","w") as outfile:
+with open("filtered_data_2000.csv","w") as outfile:
     for items in out_list:
         outfile.write(",".join(items))
         outfile.write("\n")
