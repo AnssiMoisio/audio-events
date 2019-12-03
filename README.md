@@ -1,3 +1,1 @@
-# sed-project
-
-Speech Recognition project - Sound Event Detection
+Speech Recognition project: Sound Event Detection

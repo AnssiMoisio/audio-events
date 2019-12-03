@@ -1,50 +1,97 @@
 import numpy as np
 import librosa
 from pomegranate import *
+from pomegranate import utils as pom_utils
 import pickle as pkl
 import config
+from sklearn.cluster import KMeans
+import time
 
-## mixture model components
-# d1 = MultivariateGaussianDistribution([1, 6, 3], [[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-# d2 = MultivariateGaussianDistribution([2, 8, 4], [[1, 0, 0], [0, 1, 0], [0, 0, 2]])
-# d3 = MultivariateGaussianDistribution([0, 4, 8], [[2, 0, 0], [0, 3, 0], [0, 0, 1]])
-## create mixture model
-# mixture_model = GeneralMixtureModel([d1, d2, d3], weights=[0.25, 0.60, 0.15])
+# pom_utils.enable_gpu()
 
-mean = np.array([0.0] * 40)
-covariance = np.eye(40)
-d = MultivariateGaussianDistribution(mean, covariance)
-mixture_model = GeneralMixtureModel([d, d, d], weights=[0.35, 0.35, 0.30])
+SAVED_MODELS_DIR = os.path.join(".", "saved models")
 
-# 9 states as in Ma et al. (2006)
-states = []
-for i in range(9):
-    states.append(State(mixture_model))
+# load data
+train_data = []
+eval_data = []
+for category in range(8):
+    with open(os.path.join(config.DATA_DIR, "train", config.CATEGORIES[category] + ".pkl"), "rb") as pklf:
+        train_data.append(pkl.load(pklf))
+    with open(os.path.join(config.DATA_DIR, "eval", config.CATEGORIES[category] + ".pkl"), "rb") as pklf:
+        eval_data.append(pkl.load(pklf))
 
-# create HMM
-model = HiddenMarkovModel()
-model.add_states(states)
-model.add_transition(model.start, states[0], 1.0)
-for i in range(len(states) - 1):
-    model.add_transition(states[i], states[i], 0.4)
-    model.add_transition(states[i], states[i+1], 0.6)
-model.add_transition(states[i+1], states[i+1], 0.4)
-model.add_transition(states[i+1], model.end, 0.6)
-model.bake()
+# move these to config.py
+n_states_in_hmm = 3
+n_components_in_mixture = 3
+
+
+# mfcc for initialisation
+X = np.array(train_data[0][0])
+# print(X.shape) # (40, 431)
+X = np.transpose(X)
+# print(X.shape) # (431, 40)
+
+X = np.array(train_data[0])
+print(X.shape)
+initx = np.reshape(X, (X.shape[0]*X.shape[2], X.shape[1]))
+print(initx.shape)
+
+
+print("Initialising the model:")
+print("K-means clustering of states...")
+# initialise the 10 states for category "acoustic guitar"
+clusters = KMeans(n_states_in_hmm).fit_predict(initx)
+
+print("K-means clustering of states complete")
+print("Clustering of gaussian mixtures...")
+# initialise the gaussian distributions for each state
+distributions = []
+for i in range(n_states_in_hmm):
+    print("Creating distribution for HMM state", i)
+    X_subset = initx[clusters == i]
+    print("This state cluster size in the initialisation:", len(X_subset))
+    distribution = GeneralMixtureModel.from_samples(NormalDistribution, n_components=n_components_in_mixture, X=X_subset)
+    distributions.append(distribution)
+print("Clustering of gaussian mixtures complete")
+
+filename = "hmm_init" + time.strftime("%Y%m%d-%H%M%S") + ".pkl"
+with open(os.path.join(SAVED_MODELS_DIR, filename), 'wb') as f:
+    pkl.dump(distributions, f) 
+
+transitions = np.ones((n_states_in_hmm, n_states_in_hmm), dtype='float64') / n_states_in_hmm
+starts = np.ones(n_states_in_hmm, dtype='float64') / n_states_in_hmm
+model = HiddenMarkovModel.from_matrix(transitions, distributions, starts, verbose=True)
+
+print("Initialisation complete")
+
 
 # train
-mfcc_data = []
-path = os.path.join(config.MFCC_DIR, config.CATEGORIES[0])
-for mfcc_pkl in os.listdir(path):
-    if mfcc_pkl.endswith(".pkl"):
-        with open(os.path.join(path, mfcc_pkl), 'rb') as f:
-            mfcc = pkl.load(f)
-        mfcc_data.append(mfcc)
+n_samples = len(train_data[0])
+X_train = np.array(train_data[0]) #.reshape((n_samples, -1))
+print(X_train.shape)
+# X_train = np.swapaxes(X_train,1,2)
+# print(X_train.shape)
 
-print(len(mfcc_data), "mfccs / audio samples")
-print(len(mfcc_data[0]), "frequency bands")
-print(len(mfcc_data[0][0]), "time steps in the first mfcc")
+print("Training the model...")
+model.fit(X_train, algorithm="baum-welch", verbose=True)#, max_iterations=10)
+print("Training complete")
 
-model.fit( mfcc_data, max_iterations=500 )
+filename = "hmm_model" + time.strftime("%Y%m%d-%H%M%S") + ".pkl"
+with open(os.path.join(SAVED_MODELS_DIR, filename), 'wb') as f:
+    pkl.dump(model, f) 
 
-print( model.log_probability( mfcc_data[3] ) )
+'''
+
+# evaluate
+with open(os.path.join(SAVED_MODELS_DIR, "hmm_model20191203-192334.pkl"), "rb") as pklf:
+    model = pkl.load(pklf)
+
+print(model.log_probability(eval_data[0][0]))
+
+
+for category in range(8):
+    probs = np.zeros((len(eval_data[category])))
+    for i in range(len(probs)):
+        probs[i] = model.log_probability(eval_data[category][i])
+    print(config.CATEGORIES[category], np.mean(probs))
+'''
