@@ -13,3 +13,16 @@ epochs = 30
 batch_size = 16
 image_size = (256, 128)
 n_classes = 8
+
+
+# Pre-processing parameters
+"""
+With the librosa default sampling rate of 22050Hz, a window of 1024 samples
+means about 46ms. This is similar with Cakir et al. 2017: "Convolutional
+Recurrent Neural Networks for Polyphonic Sound Event Detection"
+
+If unspecified, window defaults to win_length = n_fft
+"""
+n_fft = 1024
+hop_length = 512
+n_mels = 40 
