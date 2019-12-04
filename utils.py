@@ -33,6 +33,15 @@ def generateLogMelEnergies(y, sr, n_fft=config.n_fft, hop_length=config.hop_leng
 def generateMFCCs(y, sr, n_mfcc=config.n_mels):
     return librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc)
 
+def addDeltasAndDeltaDeltas(data):
+    """
+    Computes deltas and delta-deltas along columns,
+    so features should be the first axis and samples second e.g. (melbands, samples)
+    """
+    deltas = librosa.feature.delta(data=data, order=1)
+    dds = librosa.feature.delta(data=data, order=2)
+    return np.vstack((data, deltas, dds))
+
 def visulizeFeatures(image, sr, title='Mel-frequency spectrogram'):
     plt.figure(figsize=(10, 4))
     librosa.display.specshow(image, x_axis='time',y_axis='mel', sr=sr, fmax=8000)

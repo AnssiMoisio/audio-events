@@ -3,16 +3,17 @@ import pickle as pkl
 import random
 import config
 import os
+import time
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import scale
 
-def prepare_data():
+def prepare_data(superfolder):
     minlen = np.inf
     maxlen = 0
     mfcc_data = []
     for category in range(8):
         mfcc_data.append([])
-        path = os.path.join(config.MFCC_DIR, config.CATEGORIES[category])
+        path = os.path.join(superfolder, config.CATEGORIES[category])
         for mfcc_pkl in os.listdir(path):
             if mfcc_pkl.endswith(".pkl"):
                 with open(os.path.join(path, mfcc_pkl), 'rb') as f:
@@ -52,6 +53,15 @@ def prepare_data():
     # save
     data = [X_train, Y_train, X_validation, Y_validation, X_test, Y_test]
     iterator = ["X_train", "Y_train", "X_validation", "Y_validation", "X_test", "Y_test"]
+
+    # timestamp to folder name
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    data_folder = os.path.join(superfolder, stamp)
+    os.mkdir(data_folder)
+
+    # save
     for i, pickle_file in enumerate(iterator):
-        with open(os.path.join(config.DATA_DIR, "svm", pickle_file + ".pkl"), "wb") as pklf:
+        with open(os.path.join(data_folder, pickle_file + ".pkl"), "wb") as pklf:
             pkl.dump(data[i], pklf)
+
+    return data_folder
