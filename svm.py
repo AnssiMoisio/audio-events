@@ -6,21 +6,43 @@ from sklearn import svm
 from sklearn.metrics import classification_report, confusion_matrix
 import prepare_data_SVM
 import preprocessing_HMM_SVM
+import confusion # ominous
 
-# preprocessing_HMM_SVM.create_features()
-folder = prepare_data_SVM.prepare_data(os.path.join(config.DATA_DIR, "features"))
+# create data
+dir_train = preprocessing_HMM_SVM.create_features(os.path.join(config.DATA_DIR, "training", "audio-small"), os.path.join(config.DATA_DIR, "training", "features-small"))
+dir_eval = preprocessing_HMM_SVM.create_features(os.path.join(config.DATA_DIR, "eval", "audio-small"), os.path.join(config.DATA_DIR, "eval", "features-small"))
 
-data = []
-for i, pickle_file in enumerate(["X_train","Y_train","X_validation","Y_validation","X_test","Y_test"]):
-    with open(os.path.join(folder, pickle_file + ".pkl"), "rb") as pklf:
-            data.append(pkl.load(pklf))
-X_train, Y_train, X_validation, Y_validation, X_test, Y_test = data
+# use existing data
+# features_folder = os.path.join(config.FEATURES_DIR, "mfccs", "win2048melbands40")
 
-svclassifier = svm.SVC(kernel='rbf', gamma='auto', verbose=True, max_iter=-1)
+# prepare data
+prepare_data_SVM.prepare_data(dir_train)
+prepare_data_SVM.prepare_data(dir_eval)
+train_folder = os.path.join(os.path.join(dir_train, "_prepared"))
+eval_folder = os.path.join(os.path.join(dir_eval, "_prepared"))
+
+# use existing data
+# train_folder = os.path.join(config.DATA_DIR, "training", "features", "melbands40winlength10240", "_prepared")
+# eval_folder = os.path.join(config.DATA_DIR, "eval", "features", "melbands40winlength10240", "_prepared")
+
+train_data = []
+for i, pickle_file in enumerate(["X", "Y"]):
+    with open(os.path.join(train_folder, pickle_file + ".pkl"), "rb") as pklf:
+            train_data.append(pkl.load(pklf))
+X_train, Y_train = train_data
+eval_data = []
+for i, pickle_file in enumerate(["X", "Y"]):
+    with open(os.path.join(eval_folder, pickle_file + ".pkl"), "rb") as pklf:
+            eval_data.append(pkl.load(pklf))
+X_eval, Y_eval = eval_data
+
+# train
+print("Training SVM, data shape:", X_train.shape)
+svclassifier = svm.SVC(kernel='rbf', gamma='auto', verbose=False, max_iter=-1)
 svclassifier.fit(X_train, Y_train)
 
-y_pred = svclassifier.predict(X_validation)
-
-print(confusion_matrix(Y_validation, y_pred))
-print(classification_report(Y_validation, y_pred))
-
+# evaluate
+y_pred = svclassifier.predict(X_eval)
+cm = confusion_matrix(Y_eval, y_pred)
+print(classification_report(Y_eval, y_pred))
+print(cm)

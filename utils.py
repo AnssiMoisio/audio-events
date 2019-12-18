@@ -19,19 +19,14 @@ def generateMelSpecImage_explicit(y, sr, n_fft=config.n_fft, hop_length=config.h
 
 def generateLogMelEnergies(y, sr, n_fft=config.n_fft, hop_length=config.hop_length, n_mels=config.n_mels):
     """
-    logarithmic mel band energies as in Cakir et al. (2017)
-
-    TODO: Cakir et al.: "each energy band is normalized by subtracting its mean and
-    dividing by its standard deviation computed over the training
-    set. The normalized log mel band energies are finally split
-    into sequences"
+    logarithmic mel band energies
     """
-    spec = np.abs(librosa.stft(y, n_fft=n_fft, hop_length=hop_length))
-    mel_basis = librosa.filters.mel(sr=sr, n_fft=n_fft, n_mels=n_mels)
+    spec = np.abs(librosa.stft(y, n_fft=config.n_fft, hop_length=config.hop_length))
+    mel_basis = librosa.filters.mel(sr=sr, n_fft=config.n_fft, n_mels=config.n_mels)
     return np.log(np.dot(mel_basis, spec))
 
-def generateMFCCs(y, sr, n_mfcc=config.n_mels):
-    return librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc)
+def generateMFCCs(y, sr, n_mfcc=config.n_mels, n_fft=config.n_fft, hop_length=config.hop_length):
+    return librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc, n_fft=config.n_fft, hop_length=config.hop_length)
 
 def addDeltasAndDeltaDeltas(data):
     """
@@ -41,6 +36,18 @@ def addDeltasAndDeltaDeltas(data):
     deltas = librosa.feature.delta(data=data, order=1)
     dds = librosa.feature.delta(data=data, order=2)
     return np.vstack((data, deltas, dds))
+
+def zcr(y):
+    """
+    Calculate the zero crossing rate of the signal.
+    """
+    return librosa.feature.zero_crossing_rate(y, frame_length=config.n_fft, hop_length=config.hop_length)
+
+def rms(y):
+    """
+    Calculate the rms per window from the signal.
+    """
+    return librosa.feature.rms(y=y, frame_length=config.n_fft, hop_length=config.hop_length)
 
 def visulizeFeatures(image, sr, title='Mel-frequency spectrogram'):
     plt.figure(figsize=(10, 4))

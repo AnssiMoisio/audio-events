@@ -7,13 +7,13 @@ import time
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import scale
 
-def prepare_data(superfolder):
+def prepare_data(features_superfolder):
     minlen = np.inf
     maxlen = 0
     mfcc_data = []
     for category in range(8):
         mfcc_data.append([])
-        path = os.path.join(superfolder, config.CATEGORIES[category])
+        path = os.path.join(features_superfolder, config.CATEGORIES[category])
         for mfcc_pkl in os.listdir(path):
             if mfcc_pkl.endswith(".pkl"):
                 with open(os.path.join(path, mfcc_pkl), 'rb') as f:
@@ -22,15 +22,14 @@ def prepare_data(superfolder):
                 if len(mfcc[0]) > maxlen: maxlen = len(mfcc[0])
                 mfcc_data[category].append(mfcc)
 
-    # pad short audio samples with zeros
+    # pad short audio samples
     # minlen is the length of the shortest audio/MFCC, maxlen longest
     # print(minlen, maxlen)
     n_bands = len(mfcc_data[category][0])
     padded_mfccs = []
     for category in range(8):
         for mfcc in mfcc_data[category]:
-            padded_mfccs.append([np.pad(mfcc, [(0, 0), (0, maxlen - mfcc.shape[1])]), category])
-
+            padded_mfccs.append([np.pad(mfcc, [(0, 0), (0, maxlen - mfcc.shape[1])], 'mean'), category])
     random.shuffle(padded_mfccs)
     X, Y = [], []
     for i, label in padded_mfccs:
@@ -39,29 +38,20 @@ def prepare_data(superfolder):
 
     # reshape
     X = np.array(X)
-    print(X.shape)
+    # print(X.shape)
     X = X.reshape((X.shape[0], -1))
-    print(X.shape)
+    # print(X.shape)
 
-    #  scale the data TODO: try normalisation etc
+    #  scale the data 
     X = scale(X)
 
-    # split to training, validation and test sets
-    X, X_test, Y, Y_test = train_test_split(X, Y, test_size=0.2, train_size=0.8)
-    X_train, X_validation, Y_train, Y_validation = train_test_split(X, Y, test_size=0.25, train_size =0.75)
-
-    # save
-    data = [X_train, Y_train, X_validation, Y_validation, X_test, Y_test]
-    iterator = ["X_train", "Y_train", "X_validation", "Y_validation", "X_test", "Y_test"]
-
-    # timestamp to folder name
-    stamp = time.strftime("%Y%m%d-%H%M%S")
-    data_folder = os.path.join(superfolder, stamp)
-    os.mkdir(data_folder)
-
-    # save
+    # save data
+    data = [X, Y]
+    iterator = ["X", "Y"]
+    save_folder = os.path.join(features_superfolder, "_prepared")
+    os.mkdir(save_folder)
     for i, pickle_file in enumerate(iterator):
-        with open(os.path.join(data_folder, pickle_file + ".pkl"), "wb") as pklf:
+        with open(os.path.join(save_folder, str(pickle_file)+".pkl"), "wb") as pklf:
             pkl.dump(data[i], pklf)
 
-    return data_folder
+    return save_folder

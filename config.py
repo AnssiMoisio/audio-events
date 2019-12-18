@@ -2,9 +2,9 @@ import os
 
 CATEGORIES = ["Acoustic Guitar", "Bark", "Bell", "Explosion", "Laughter", "Siren", "Sneeze", "Thunder"]
 SPECTROGRAM_DIR = "D:/Masters/Speech Recognition/Project/sed-project/data/spectrogram"
-DATA_DIR    = os.path.join(".", "data")
+
+DATA_DIR    = os.path.join(".", "data", "data-full")
 AUDIO_DIR   = os.path.join(DATA_DIR, "audio")
-MFCC_DIR    = os.path.join(DATA_DIR, "mfccs")
 
 # Parameters
 learning_rate = 0.0001
